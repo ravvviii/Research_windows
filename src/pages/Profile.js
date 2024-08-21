@@ -3,14 +3,15 @@ import { FaSpinner } from 'react-icons/fa'; // Import spinner icon from react-ic
 import { useNavigate } from 'react-router-dom';
 import { Bounce, toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { account } from '../appwrite/config';
+import { account, storage } from '../appwrite/config'; // Assuming you have a storage setup in Appwrite
 
 function Profile() {
   const [papers, setPapers] = useState([]);
-  const [loading, setLoading] = useState(false); // State to manage loading spinner
-  const [name, setname] = useState('')
-  const [email, setemail] = useState('')
-  
+  const [loadingLogout, setLoadingLogout] = useState(false); // State to manage loading spinner for logout
+  const [loadingImageUpload, setLoadingImageUpload] = useState(false); // State to manage loading spinner for image upload
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [profileImage, setProfileImage] = useState('https://via.placeholder.com/150'); // Default profile image
   const navigate = useNavigate();
 
   const notifyLogout = () => {
@@ -43,44 +44,80 @@ function Profile() {
         setPapers(uploadedPapers);
       }, 1000);
 
-
-// Fetch user details
+      // Fetch user details
       const checkLoginStatus = async () => {
         try {
           const user = await account.get('current');
           if (user) {
-            setemail(user.email || '');
-            setname(user.name || '');
-            
+            setEmail(user.email || '');
+            setName(user.name || '');
+            // If user has a profile image URL, update the profile image
+            if (user.prefs && user.prefs.profileImage) {
+              setProfileImage(user.prefs.profileImage);
+            }
           } else {
-            navigate('/login');
+            navigate('/signin');
           }
         } catch (error) {
           console.error('Fetch user error:', error);
-          navigate('/login');
-        } finally {
-          setLoading(false);
+          navigate('/signin');
         }
       };
   
       checkLoginStatus();
-
     };
 
     fetchUploadedPapers();
   }, [navigate]);
 
   const handleLogout = async () => {
-    setLoading(true); // Show the spinner
+    setLoadingLogout(true); // Show the spinner for logout
     try {
       await account.deleteSession('current'); // Deletes the current session
       notifyLogout(); // Show toast and handle redirect on close
     } catch (error) {
       console.error('Failed to log out:', error);
     } finally {
-      setLoading(false); // Hide the spinner
+      setLoadingLogout(false); // Hide the spinner for logout
     }
   };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setLoadingImageUpload(true); // Show the spinner for image upload
+      try {
+        // Upload the image to Appwrite storage
+        const uploadedFile = await storage.createFile(
+          process.env.REACT_APP_BUCKET_ID, // Bucket ID
+          'unique()', // Use 'unique()' to generate a unique file ID
+          file // The file to upload
+        );
+  
+        // Get the image URL from the storage
+        const imageUrl = await storage.getFile(
+          process.env.REACT_APP_BUCKET_ID, 
+          uploadedFile.$id // Use the file ID returned by the upload
+        );
+  
+        // Update the user's profile with the new image URL
+        await account.updatePrefs({
+          profile_image: imageUrl,
+        });
+  
+        // Update the profile image in the state
+        setProfileImage(imageUrl);
+  
+        toast.success("Profile image updated successfully!");
+      } catch (error) {
+        console.error('Image upload error:', error);
+        toast.error("Failed to upload profile image.");
+      } finally {
+        setLoadingImageUpload(false);
+      }
+    }
+  };
+  
 
   return (
     <div className='bg-gray-800'>
@@ -88,23 +125,35 @@ function Profile() {
         {/* Top Section with Image and Info */}
         <div className="flex items-center justify-between">
           {/* Profile Image */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 relative">
             <img
-              src="https://via.placeholder.com/150" // Replace with actual profile image URL
+              src={profileImage} // Display the profile image
               alt="Profile"
               className="w-32 h-32 rounded-full border-4 border-gray-300"
             />
+            <input
+              type="file"
+              accept="image/*"
+              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              onChange={handleImageUpload}
+              disabled={loadingImageUpload} // Disable during upload
+            />
+            {loadingImageUpload && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <FaSpinner className="animate-spin text-gray-500" />
+              </div>
+            )}
           </div>
 
           {/* Profile Info */}
           <div className="flex-1 ml-6 grid grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded shadow">
-              <p className="font-bold text-gray-700">UID</p>
-              <p>{name}</p> {/* Replace with actual UID */}
+              <p className="font-bold text-gray-700">Name</p>
+              <p>{name}</p>
             </div>
             <div className="bg-white p-4 rounded shadow">
-              <p className="font-bold text-gray-700">Department</p>
-              <p>{email}</p> {/* Replace with actual department */}
+              <p className="font-bold text-gray-700">Email</p>
+              <p>{email}</p>
             </div>
             <div className="bg-white p-4 rounded shadow">
               <p className="font-bold text-gray-700">Role</p>
@@ -114,9 +163,9 @@ function Profile() {
               <button 
                 className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded flex items-center justify-center"
                 onClick={handleLogout}
-                disabled={loading} // Disable button while loading
+                disabled={loadingLogout} // Disable button while loading logout
               >
-                {loading ? (
+                {loadingLogout ? (
                   <FaSpinner className="animate-spin mr-2" /> // Spinner icon with animation
                 ) : (
                   'Logout'

@@ -19,6 +19,12 @@ function Header() {
     setIsModalOpen(false);
   };
 
+
+  const onContactClick = ()=>{
+    navigate('/contact')
+
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center p-4 bg-gray-800 text-white">
@@ -34,6 +40,13 @@ function Header() {
             onClick={onUploadClick}
           >
             <FaUpload className="mr-2" /> Upload Paper
+          </button>
+
+          <button 
+            className="bg-red-500 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded flex items-center"
+            onClick={onContactClick}
+          >
+            Contact Us
           </button>
 
           <button 
