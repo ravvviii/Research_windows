@@ -3,7 +3,7 @@ import { FaSpinner } from 'react-icons/fa'; // Import spinner icon from react-ic
 import { useNavigate } from 'react-router-dom';
 import { Bounce, toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { account, storage } from '../appwrite/config'; // Assuming you have a storage setup in Appwrite
+import { account, client, storage } from '../appwrite/config'; // Import client from config
 
 function Profile() {
   const [papers, setPapers] = useState([]);
@@ -30,28 +30,23 @@ function Profile() {
   };
 
   useEffect(() => {
-    // Mock function to fetch uploaded papers
+    // Fetch uploaded papers and user details
     const fetchUploadedPapers = async () => {
-      // Replace this with actual API call to fetch papers for the logged-in user
       const uploadedPapers = [
-        // Sample data, replace with actual data from your backend
         { id: 1, title: "Research Paper 1", url: "#" },
         { id: 2, title: "Research Paper 2", url: "#" }
       ];
 
-      // Simulate fetching delay
       setTimeout(() => {
         setPapers(uploadedPapers);
       }, 1000);
 
-      // Fetch user details
       const checkLoginStatus = async () => {
         try {
           const user = await account.get('current');
           if (user) {
             setEmail(user.email || '');
             setName(user.name || '');
-            // If user has a profile image URL, update the profile image
             if (user.prefs && user.prefs.profileImage) {
               setProfileImage(user.prefs.profileImage);
             }
@@ -63,7 +58,7 @@ function Profile() {
           navigate('/signin');
         }
       };
-  
+
       checkLoginStatus();
     };
 
@@ -71,72 +66,75 @@ function Profile() {
   }, [navigate]);
 
   const handleLogout = async () => {
-    setLoadingLogout(true); // Show the spinner for logout
+    setLoadingLogout(true);
     try {
       await account.deleteSession('current'); // Deletes the current session
-      notifyLogout(); // Show toast and handle redirect on close
+      notifyLogout();
     } catch (error) {
       console.error('Failed to log out:', error);
     } finally {
-      setLoadingLogout(false); // Hide the spinner for logout
+      setLoadingLogout(false);
     }
   };
 
+  
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      setLoadingImageUpload(true); // Show the spinner for image upload
-      try {
-        // Upload the image to Appwrite storage
-        const uploadedFile = await storage.createFile(
-          process.env.REACT_APP_BUCKET_ID, // Bucket ID
-          'unique()', // Use 'unique()' to generate a unique file ID
-          file // The file to upload
-        );
-  
-        // Get the image URL from the storage
-        const imageUrl = await storage.getFile(
-          process.env.REACT_APP_BUCKET_ID, 
-          uploadedFile.$id // Use the file ID returned by the upload
-        );
-  
-        // Update the user's profile with the new image URL
-        await account.updatePrefs({
-          profile_image: imageUrl,
-        });
-  
-        // Update the profile image in the state
-        setProfileImage(imageUrl);
-  
-        toast.success("Profile image updated successfully!");
-      } catch (error) {
-        console.error('Image upload error:', error);
-        toast.error("Failed to upload profile image.");
-      } finally {
-        setLoadingImageUpload(false);
-      }
+        setLoadingImageUpload(true); // Show the spinner for image upload
+        try {
+            // Fetch current user data
+            const user = await account.get();
+            
+            // Check if the user already has a profile picture
+            if (user.prefs.profile_image_fileId) {
+                // Delete the existing profile picture
+                await storage.deleteFile(
+                    process.env.REACT_APP_BUCKET_ID, 
+                    user.prefs.profile_image_fileId
+                );
+            }
+
+            // Upload the new image to Appwrite storage
+            const uploadedFile = await storage.createFile(
+                process.env.REACT_APP_BUCKET_ID, // Bucket ID
+                'unique()', // Use 'unique()' to generate a unique file ID
+                file // The file to upload
+            );
+
+            // Construct the image URL from the uploaded file
+            const imageUrl = `${client.config.endpoint}/storage/buckets/${process.env.REACT_APP_BUCKET_ID}/files/${uploadedFile.$id}/view?project=${client.config.project}`;
+            console.log('Image URL:', imageUrl);
+
+            // Update the user's profile with the new image URL and file ID
+            await account.updatePrefs({
+                profile_image: imageUrl,
+                profile_image_fileId: uploadedFile.$id, // Store the file ID
+            });
+
+            // Update the profile image in the state
+            setProfileImage(imageUrl);
+
+            toast.success("Profile image updated successfully!");
+        } catch (error) {
+            console.error('Image upload error:', error);
+            toast.error(`Failed to upload profile image. Error: ${error.message}`);
+        } finally {
+            setLoadingImageUpload(false);
+        }
     }
-  };
-  
+};
+
 
   return (
     <div className='bg-gray-800'>
       <div className="max-w-4xl mx-auto p-6 bg-gray-100 rounded-lg shadow-lg">
-        {/* Top Section with Image and Info */}
         <div className="flex items-center justify-between">
-          {/* Profile Image */}
           <div className="flex-shrink-0 relative">
             <img
               src={profileImage} // Display the profile image
               alt="Profile"
               className="w-32 h-32 rounded-full border-4 border-gray-300"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-              onChange={handleImageUpload}
-              disabled={loadingImageUpload} // Disable during upload
             />
             {loadingImageUpload && (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -145,7 +143,6 @@ function Profile() {
             )}
           </div>
 
-          {/* Profile Info */}
           <div className="flex-1 ml-6 grid grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded shadow">
               <p className="font-bold text-gray-700">Name</p>
@@ -175,7 +172,21 @@ function Profile() {
           </div>
         </div>
 
-        {/* Bottom Section (Uploaded Papers or No Papers Message) */}
+        {/* Change Profile Button */}
+        <div className="mt-4 flex justify-center">
+          <label htmlFor="profileImageUpload" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
+            Change Profile
+          </label>
+          <input
+            id="profileImageUpload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageUpload}
+            disabled={loadingImageUpload} // Disable during upload
+          />
+        </div>
+
         <div className="mt-8 grid grid-cols-3 gap-4">
           {papers.length > 0 ? (
             papers.map((paper) => (
