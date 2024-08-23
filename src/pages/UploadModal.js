@@ -52,7 +52,10 @@ function UploadModal({ onClose }) {
   
       setLoading(false);
       toast.success("Paper uploaded successfully!"); // Show success message
-      onClose(); // Close the modal on success
+      setTimeout(() => {
+        
+        onClose(); // Close the modal on success
+      }, 1000);
     } catch (error) {
       console.error("File upload error:", error.message); // Log the error message
       console.error("Full error details:", error); // Log the full error details
