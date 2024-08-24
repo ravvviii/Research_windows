@@ -40,6 +40,7 @@ function UploadModal({ onClose }) {
         user_id: user.$id, // Store the user ID
         paper_name: paperName,
         file_id: uploadedFile.$id,
+        email: user.email,
         file_url: fileUrl, // Use the constructed file URL
       };
   
