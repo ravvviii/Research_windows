@@ -145,7 +145,7 @@ function Profile() {
 
           <div className="flex-1 ml-6 grid grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded shadow">
-              <p className="font-bold text-gray-700">Name</p>
+              <p className="font-bold text-gray-700">UID</p>
               <p>{name}</p>
             </div>
             <div className="bg-white p-4 rounded shadow">

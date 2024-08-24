@@ -14,13 +14,15 @@ function Paper() {
           process.env.REACT_APP_DB_ID, // Your Database ID
           process.env.REACT_APP_COLLECTION_ID // Your Collection ID
         );
-
+  
+        console.log("Fetched documents:", response.documents); // Log fetched data
+  
         const fetchedPapers = response.documents.map(doc => ({
           id: doc.$id,
           name: doc.paper_name,
-          url: doc.file_url
+          fileId: doc.file_id // Make sure this matches the field in your database
         }));
-
+  
         setPapers(fetchedPapers);
       } catch (error) {
         console.error("Failed to fetch papers:", error);
@@ -28,10 +30,10 @@ function Paper() {
         setLoading(false); // Stop loading once data is fetched
       }
     };
-
+  
     fetchPapers();
   }, []);
-
+  
   return (
     <div className="p-4">
       {loading ? (
@@ -51,7 +53,7 @@ function Paper() {
             <PaperCard 
               key={paper.id} 
               paperName={paper.name} 
-              fileUrl={paper.url} 
+              fileId={paper.fileId} // Pass the correct fileId here
             />
           ))}
         </div>
