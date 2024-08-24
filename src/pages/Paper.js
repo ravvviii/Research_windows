@@ -15,7 +15,7 @@ function Paper() {
           process.env.REACT_APP_COLLECTION_ID // Your Collection ID
         );
   
-        console.log("Fetched documents:", response.documents); // Log fetched data
+        // console.log("Fetched documents:", response.documents); // Log fetched data
   
         const fetchedPapers = response.documents.map(doc => ({
           id: doc.$id,
