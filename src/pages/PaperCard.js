@@ -1,14 +1,7 @@
-import { Client, Storage } from 'appwrite';
 import React from 'react';
 import { FaDownload } from 'react-icons/fa';
 
-function PaperCard({ paperName, fileId }) { // Use fileId here (consistent with earlier usage)
-  const client = new Client()
-    .setEndpoint('https://cloud.appwrite.io/v1') // Your API Endpoint
-    .setProject(process.env.REACT_APP_PROJECT_ID); // Your project ID
-
-  const storage = new Storage(client);
-
+function PaperCard({ paperName, fileId, storage }) {
   const truncateName = (name) => {
     if (name.length > 30) {
       return name.substring(0, 27) + '...';
@@ -18,7 +11,10 @@ function PaperCard({ paperName, fileId }) { // Use fileId here (consistent with 
 
   const handleDownload = async () => {
     try {
+      // Fetch the download URL from Appwrite
       const result = await storage.getFileDownload(process.env.REACT_APP_BUCKET_ID, fileId);
+      
+      // Use the URL directly to download the file
       const downloadUrl = result.href; 
       window.open(downloadUrl, '_blank'); // Open the download URL in a new tab
     } catch (error) {

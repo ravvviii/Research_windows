@@ -33,7 +33,7 @@ function Profile() {
           const fetchedPapers = documents.map((doc) => ({
             id: doc.$id,
             title: doc.paper_name,
-            url: `${client.config.endpoint}/storage/buckets/${process.env.REACT_APP_BUCKET_ID}/files/${doc.file_id}/view?project=${client.config.project}`,
+            fileId: doc.file_id, // Store fileId for download
           }));
 
           setPapers(fetchedPapers);
@@ -186,6 +186,7 @@ function Profile() {
                 key={paper.id}
                 paperName={paper.title}
                 fileId={paper.fileId}
+                storage={storage}  // Pass storage instance as prop
               />
             ))
           ) : (
